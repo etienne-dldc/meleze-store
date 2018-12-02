@@ -1,0 +1,16 @@
+{
+  "name": "meleze-store",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:etienne-dldc/meleze-store.git",
+  "author": "Etienne Dldc <e.deladonchamps@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/hoist-non-react-statics": "^3.0.1",
+    "@types/react": "^16.7.11",
+    "@types/webpack-env": "^1.13.6",
+    "hoist-non-react-statics": "^3.2.0",
+    "immer": "^1.8.0",
+    "tslib": "^1.9.3"
+  }
+}
