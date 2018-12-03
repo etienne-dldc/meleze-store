@@ -1,4 +1,4 @@
-import { createOperators, execute } from './lib/executable';
+import { createOperators, execute } from './lib';
 import { derived, useDerived } from './lib/derived';
 import { State } from './state';
 
