@@ -1,5 +1,16 @@
-import { pipe, map, value, action, mutation, parallel, run, execute } from './executable';
-import { derived, useDerived } from './derived';
+import { createOperators, execute } from './lib/executable';
+import { derived, useDerived } from './lib/derived';
+import { State } from './state';
+
+const effects = {
+  api: {
+    getStuff: (): Promise<{ stuff: boolean }> => {
+      return {} as any;
+    },
+  },
+};
+
+const { pipe, map, value, action, mutation, parallel, run } = createOperators<State, typeof effects>();
 
 const setBar = mutation<number>(({ state, value }) => {
   state.bar = value;
@@ -25,6 +36,10 @@ const singleMap = pipe(map<number, number>(({ value }) => value * 2));
 
 singleMap(34);
 
+const fetchStuff = action<void, { stuff: boolean }>(({ api }) => {
+  return value(api.getStuff());
+});
+
 const doStuff = pipe(
   eight,
   value(42),
@@ -37,15 +52,9 @@ const doStuff = pipe(
   map(({ value }) => {
     return value.stuff;
   }),
+  fetchStuff(),
   value(43),
-  logNumber,
-  pipe(
-    map(ctx => ctx.value),
-    map(ctx => ctx.value),
-    map(ctx => ctx.value),
-    map(ctx => ctx.value),
-    map(ctx => ctx.value)
-  )
+  logNumber
 );
 
 execute(doStuff);
@@ -61,14 +70,11 @@ para({ num: 34, str: '10' });
 const logParaResult = pipe(
   para,
   run(({ value }) => {
-    // @ts-ignore
     const str = value[0];
-    // @ts-ignore
     const num = value[1];
-    // @ts-ignore
     const otherNum = value[2];
     // value[3] // => error Index '3' is out-of-bounds in tuple of length 3
-    console.log(value);
+    console.log({ value, str, num, otherNum });
   })
 );
 
@@ -79,7 +85,9 @@ const foo = derived(state => state.foo);
 const fooObj = derived(state => ({ foo, bar: state.bar }));
 const first = derived(state => state.arr[0]);
 
+// @ts-ignore
 const MyComponent: React.FunctionComponent = () => {
+  // @ts-ignore
   const { bar, foo, firstIrem } = useDerived(() => ({
     ...fooObj(),
     firstIrem: first(),
