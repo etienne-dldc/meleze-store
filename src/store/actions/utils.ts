@@ -3,16 +3,17 @@ import { RemoteQuestion, SuggestionAny } from '../state';
 import { run, map } from './operators';
 import { RemoteQuestionsMapper, RemoteAnswer, RemoteAnswerMessage } from '../state/RemoteQuestion';
 import { Answer, AnswerType, CreateAnswer, AnswerAny } from '../state/Answer';
+import { setWindowSize } from './mutations';
 
 type ChangeEvent = React.ChangeEvent<HTMLInputElement>;
 
 export const getEventValue = map<ChangeEvent, string>(({ value: event }) => event.currentTarget.value);
 
-export const doSearch = map<any, Promise<algoliasearchHelper.SearchResults<any>>>(ctx =>
-  ctx.algolia.search(ctx.state.query)
-);
+type SearchResults = algoliasearchHelper.SearchResults<any>;
 
-export const extractHits = map<algoliasearchHelper.SearchResults<any>, Array<RemoteQuestion>>(({ value }) => {
+export const doSearch = map<void, Promise<SearchResults>>(ctx => ctx.algolia.search(ctx.state.query));
+
+export const extractHits = map<SearchResults, Array<RemoteQuestion>>(({ value }) => {
   try {
     return RemoteQuestionsMapper(value.hits);
   } catch (e) {
@@ -44,7 +45,7 @@ export const mapSuggestionNotNull = map<SuggestionAny | null, SuggestionAny>(({ 
   return value;
 });
 
-export const getSelectedSuggestion = map<any, SuggestionAny | null>(({ state }) => state.selectedSuggestion);
+export const getSelectedSuggestion = map<void, SuggestionAny | null>(({ state }) => state.selectedSuggestion);
 
 export const mapRemoteAnswerToRemoteAnswerMessages = map<RemoteAnswer, Array<RemoteAnswerMessage>>(
   ({ value }) => value.messages || []
@@ -61,7 +62,7 @@ export const mapRemoteAnswerMessagesToAnswers = map<Array<RemoteAnswerMessage>, 
     )
 );
 
-export const getRunningAnswer = map<any, AnswerAny | null>(({ state }) => state.runningAnswer);
+export const getRunningAnswer = map<void, AnswerAny | null>(({ state }) => state.runningAnswer);
 
 // export const mapMessageAnswerToTimer = map<Answer<AnswerType.Message>, number>(({ value }) => {})
 
@@ -72,13 +73,10 @@ export const getRunningAnswer = map<any, AnswerAny | null>(({ state }) => state.
 //   return value !== null;
 // });
 
-// export const listenWindowResize = run<Overmind<IConfig>>(function listenWindowResize({
-//   syncWindowSize,
-//   value: app
-// }) {
-//   syncWindowSize(size => app.actions.setWindowSize(size));
-// });
+export const listenWindowResize = run<void>(({ syncWindowSize, execute }) => {
+  syncWindowSize(size => execute(setWindowSize(size)));
+});
 
-export const initAlgolia = run(function initAlgolia(effects) {
+export const initAlgolia = run<void>(function initAlgolia(effects) {
   return effects.algolia.init();
 });

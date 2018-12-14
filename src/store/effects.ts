@@ -3,6 +3,7 @@ import algoliasearchHelper from 'algoliasearch-helper';
 import { WindowSize } from './state';
 import createUuid from 'uuid/v4';
 import throttle from 'utils/throttle';
+export { execute } from '../lib';
 
 const applicationID = 'Y22I53GFTP';
 const apiKey = 'b1a057e32b6b56d9b492373173f86b33';
@@ -31,7 +32,7 @@ function createAlgoliaEffect() {
       throw new Error('Algolia is not initialized yet');
     }
     const result = await helper.searchOnce({
-      query
+      query,
     });
     return result.content;
   }
@@ -57,7 +58,7 @@ function createAlgoliaEffect() {
   return {
     init,
     search,
-    getAnswer
+    getAnswer,
   };
 }
 
@@ -69,14 +70,14 @@ export function syncWindowSize(onResize: (newSize: WindowSize) => void) {
     throttle(() => {
       onResize({
         height: window.innerHeight,
-        width: window.innerWidth
+        width: window.innerWidth,
       });
     }, 1000 / 60)
   );
   // init
   onResize({
     height: window.innerHeight,
-    width: window.innerWidth
+    width: window.innerWidth,
   });
 }
 

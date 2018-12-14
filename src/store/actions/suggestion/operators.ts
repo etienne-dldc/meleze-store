@@ -1,26 +1,21 @@
-import { Suggestion } from 'logic/state';
-import { SuggestionType } from 'logic/state/Suggestion';
-import { ChatItem, ChatItemType, CreateChatItem } from 'logic/state/ChatItem';
-import { RemoteAnswer } from 'logic/state/RemoteQuestion';
-import { createMapOperators } from 'utils/createMapOperators';
+import { Suggestion } from '../../state';
+import { SuggestionType } from '../../state/Suggestion';
+import { ChatItem, ChatItemType, CreateChatItem } from '../../state/ChatItem';
+import { RemoteAnswer } from '../../state/RemoteQuestion';
+import { map } from '../operators';
 
-export const suggestionOperations = createMapOperators<{
-  mapSuggestionQuestionToChatItem: [
-    Suggestion<SuggestionType.RemoteQuestion>,
-    ChatItem<ChatItemType.RemoteQuestion>
-  ];
-  mapSuggestionQuestionToAnswer: [
-    Suggestion<SuggestionType.RemoteQuestion>,
-    RemoteAnswer
-  ];
-}>({
-  mapSuggestionQuestionToChatItem: ({ value, uuid }) => {
-    return CreateChatItem[ChatItemType.RemoteQuestion]({
-      question: value.question,
-      id: uuid()
-    });
-  },
-  mapSuggestionQuestionToAnswer: ({ value }) => {
+export const mapSuggestionQuestionToChatItem = map<
+  Suggestion<SuggestionType.RemoteQuestion>,
+  ChatItem<ChatItemType.RemoteQuestion>
+>(({ value, uuid }) => {
+  return CreateChatItem[ChatItemType.RemoteQuestion]({
+    question: value.question,
+    id: uuid(),
+  });
+});
+
+export const mapSuggestionQuestionToAnswer = map<Suggestion<SuggestionType.RemoteQuestion>, RemoteAnswer>(
+  ({ value }) => {
     return value.question.answer;
   }
-});
+);

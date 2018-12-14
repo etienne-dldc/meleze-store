@@ -1,67 +1,57 @@
-import { pipe, fork, Operator } from 'overmind';
-import { operators } from '../operators';
-import { mutations } from '../mutations';
+import * as mutations from '../mutations';
 import { SuggestionAny } from '../../state';
-import { SuggestionType, Suggestion } from '../../state/Suggestion';
-import { suggestionOperations } from './operators';
-import { scope } from 'utils/scope';
-import { noop } from 'utils/noop';
-import {
-  RemoteAnswer,
-  RemoteAnswerWithMessages
-} from 'logic/state/RemoteQuestion';
-import { filterValue } from 'utils/filterValue';
+import { SuggestionType, Suggestion, SuggestionIs } from '../../state/Suggestion';
+import { RemoteAnswer } from '../../state/RemoteQuestion';
+import * as suggestionOperations from './operators';
+import { action, pipe, inject } from '../operators';
 
-export const handleRemoteAnswer: Operator<RemoteAnswer, RemoteAnswer> = pipe(
-  filterValue(function awserHasMessages(
-    value
-  ): value is RemoteAnswerWithMessages {
-    return !!value.messages && value.messages.length > 0;
-  }),
-  operators.mapRemoteAnswerToRemoteAnswerMessages,
-  operators.mapRemoteAnswerMessagesToAnswers,
-  mutations.pushAnswers
-);
+export const handleRemoteAnswer = action<RemoteAnswer, any>(() => {
+  return null;
+  //   filterValue(function awserHasMessages(value): value is RemoteAnswerWithMessages {
+  //     return !!value.messages && value.messages.length > 0;
+  //   }),
+  //   utils.mapRemoteAnswerToRemoteAnswerMessages,
+  //   utils.mapRemoteAnswerMessagesToAnswers,
+  //   mutations.pushAnswers
+});
 
-export const handleQuestionSuggestion: Operator<
-  Suggestion<SuggestionType.RemoteQuestion>,
-  Suggestion<SuggestionType.RemoteQuestion>
-> = pipe(
-  mutations.clearAnswerQueue,
-  scope(
-    'addChatItem',
+export const handleQuestionSuggestion = action<Suggestion<SuggestionType.RemoteQuestion>, any>(({ value }) => {
+  console.log(value);
+  return pipe(
+    mutations.clearAnswerQueue,
+    inject(value),
     suggestionOperations.mapSuggestionQuestionToChatItem,
-    mutations.addChatItem
-  ),
-  mutations.clearQuery,
-  scope(
-    'handleAnswer',
+    mutations.addChatItem,
+    mutations.clearQuery,
+    inject(value),
     suggestionOperations.mapSuggestionQuestionToAnswer,
     handleRemoteAnswer
-  )
-);
+  );
+});
 
-type Paths = { [K in SuggestionType]: Operator<Suggestion<K>, any> } & {
-  ignore: Operator<SuggestionAny | null, any>;
-};
+export const handleSuggestion = action<SuggestionAny | null, any>(({ value }) => {
+  if (value === null) {
+    return null;
+  }
+  if (SuggestionIs[SuggestionType.RemoteQuestion](value)) {
+    return handleQuestionSuggestion(value);
+  }
+  return null;
+});
 
-export const handleSuggestion: Operator<
-  SuggestionAny | null,
-  SuggestionAny | null
-> = pipe(
-  operators.filterSuggestionIsNotNull,
-  fork<SuggestionAny | null, Paths>(
-    function chooseSuggestionPath({ value }) {
-      if (value === null) {
-        return 'ignore';
-      }
-      return value.type;
-    },
-    {
-      ignore: noop(),
-      [SuggestionType.RemoteQuestion]: handleQuestionSuggestion,
-      [SuggestionType.NoResult]: noop(),
-      [SuggestionType.SearchByAlgolia]: noop()
-    }
-  )
-);
+//   utils.filterSuggestionIsNotNull,
+//   fork<SuggestionAny | null, Paths>(
+//     function chooseSuggestionPath({ value }) {
+//       if (value === null) {
+//         return 'ignore';
+//       }
+//       return value.type;
+//     },
+//     {
+//       ignore: noop(),
+//       [SuggestionType.RemoteQuestion]: handleQuestionSuggestion,
+//       [SuggestionType.NoResult]: noop(),
+//       [SuggestionType.SearchByAlgolia]: noop()
+//     }
+//   )
+// );

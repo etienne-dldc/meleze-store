@@ -1,66 +1,52 @@
-import { operators } from './operators';
-import { mutations } from './mutations';
-import { SuggestionAny, RemoteQuestion } from '../state';
+import * as utils from './utils';
+import * as mutations from './mutations';
+import { SuggestionAny } from '../state';
 import { handleSuggestion } from './suggestion';
-import { pipe, parallel, map, Operator, IConfig, Overmind } from 'overmind';
+import { pipe, map, parallel } from './operators';
 
 export { handleRunningAnswer } from './answer';
 
 export const { setSelectedSuggestionIndex, setWindowSize } = mutations;
 
-type ChangeEvent = React.ChangeEvent<HTMLInputElement>;
-
-export const setQuery: Operator<ChangeEvent, string> = pipe(
-  operators.getEventValue,
+export const setQuery = pipe(
+  utils.getEventValue,
   mutations.setQuery
 );
 
-export const setSearchHits: Operator<
-  Array<RemoteQuestion>,
-  Array<RemoteQuestion>
-> = pipe(
+export const setSearchHits = pipe(
   mutations.setSearchHits,
   mutations.resetSelectedSuggestionIndex
 );
 
-export const updateHits: Operator<any, Array<RemoteQuestion>> = pipe(
-  operators.doSearch,
-  operators.extractHits,
+export const updateHits = pipe(
+  utils.doSearch,
+  utils.extractHits,
   setSearchHits
 );
 
-export const initSearch: Operator<any, Array<RemoteQuestion>> = pipe(
-  operators.initAlgolia,
+export const initSearch = pipe(
+  utils.initAlgolia,
   updateHits
 );
 
-export const onInitialize: Operator<Overmind<IConfig>, any> = parallel([
-  initSearch,
-  operators.listenWindowResize
-]);
+export const onInitialize = parallel(initSearch, utils.listenWindowResize);
 
-export const selectNextSuggestion: Operator<void, number | null> = pipe(
-  operators.selectNextSuggestion,
+export const selectNextSuggestion = pipe(
+  utils.selectNextSuggestion,
   mutations.setSelectedSuggestionIndex
 );
 
-export const selectPrevSuggestion: Operator<void, number | null> = pipe(
-  operators.selectPrevSuggestion,
+export const selectPrevSuggestion = pipe(
+  utils.selectPrevSuggestion,
   mutations.setSelectedSuggestionIndex
 );
 
-export const confirmSelectedSuggestion: Operator<
-  void,
-  SuggestionAny | null
-> = pipe(
-  operators.getSelectedSuggestion,
+export const confirmSelectedSuggestion = pipe(
+  utils.getSelectedSuggestion,
   handleSuggestion
 );
 
-const mapSuggestionIndexToSuggestion: Operator<
-  number,
-  SuggestionAny | null
-> = map<number, SuggestionAny | null>(({ state, value }) => {
+const mapSuggestionIndexToSuggestion = map<number, SuggestionAny | null>(({ state, value }) => {
   const suggestion = state.suggestions[value];
   if (suggestion === undefined) {
     return null;
@@ -68,10 +54,7 @@ const mapSuggestionIndexToSuggestion: Operator<
   return suggestion;
 });
 
-export const confirmSuggestionAtIndex: Operator<
-  number,
-  SuggestionAny | null
-> = pipe(
+export const confirmSuggestionAtIndex = pipe(
   mapSuggestionIndexToSuggestion,
   handleSuggestion
 );

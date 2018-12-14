@@ -10,7 +10,7 @@ const effects = {
   },
 };
 
-const { pipe, map, value, action, mutation, parallel, run } = createOperators<State, typeof effects>();
+const { pipe, map, inject: value, action, mutation, parallel, run } = createOperators<State, typeof effects>();
 
 const setBar = mutation<number>(({ state, value }) => {
   state.bar = value;
