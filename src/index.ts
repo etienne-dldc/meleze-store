@@ -1,4 +1,4 @@
-import { map, mutate, pipe, withValue, inject, execute, parallel, callable, action, Executable } from './lib';
+import { map, mutate, pipe, withValue, inject, execute, parallel, callable, action, Executable, validate } from './lib';
 
 type State = {
   num: number;
