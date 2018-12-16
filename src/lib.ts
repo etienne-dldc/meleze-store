@@ -28,6 +28,12 @@ export function mutate<Input = void>(
   return {} as any;
 }
 
+export function run<Input = void>(
+  _act: (ctx: Context<Input>) => void
+): Executable<Input, Input, [Input] extends [void] ? false : true, false, false> {
+  return {} as any;
+}
+
 export function inject<Value>(
   _val: Value
 ): Executable<
