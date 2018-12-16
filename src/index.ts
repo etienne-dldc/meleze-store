@@ -1,4 +1,17 @@
-import { map, mutate, pipe, withValue, inject, execute, parallel, callable } from './lib';
+import {
+  Context,
+  map,
+  mutate,
+  pipe,
+  withValue,
+  inject,
+  execute,
+  parallel,
+  callable,
+  action,
+  noop,
+  Executable,
+} from './lib';
 
 type State = {
   num: number;
@@ -30,18 +43,36 @@ const mut2 = mutate<{ num: number }>(() => {
   state.str = 'foo';
 });
 
+const setStrIfTrue = action<boolean, Executable<void, { str: string }, false, true, false>>(({ value }) => {
+  if (value) {
+    const res = withValue(mut1, { str: 'hello' });
+    return res;
+  }
+  return inject({ str: 'hello' });
+});
+
 const myAction = pipe(
+  setStrIfTrue,
   setStr,
-  setStr,
-  setStr,
+  map<{ str: string }, number>(({ value }) => value.str.length),
   setNum
+);
+
+const test = pipe(
+  inject({ num: 43, str: 'hello' }),
+  map<{ num: number }, { num: number }>(({ value }) => value)
 );
 
 const runAll = parallel(
   mut1,
-  mut2
+  mut2,
   // myAction,
-  // double
+  pipe(
+    map<{ num: number }, number>(({ value }) => value.num),
+    double
+  )
 );
 
-const result = callable(runAll)({ str: 'hello', num: 43 });
+const result1 = callable(runAll)({ str: 'hello', num: 43 });
+const result2 = execute(runAll, { str: 'hello', num: 43 });
+const result3 = execute(setStr);

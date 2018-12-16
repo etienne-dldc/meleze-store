@@ -1,4 +1,4 @@
-type Context<Value> = { value: Value };
+export type Context<Value> = { value: Value };
 
 export type Executable<Input, Output, In, Out, Async> = {
   input: Input;
@@ -31,7 +31,7 @@ export function mutate<Input = void>(
 export function inject<Value>(
   _val: Value
 ): Executable<
-  [Value] extends [Promise<infer U>] ? U : Value,
+  void,
   [Value] extends [Promise<infer U>] ? U : Value,
   false,
   true,
@@ -42,22 +42,25 @@ export function inject<Value>(
 
 type Or<A, B> = A extends true ? true : (B extends true ? true : false);
 
+// can pass A when require B
+type Compat<A, B> = A extends B ? true : false;
+
 // prettier-ignore
 type PipeMerge<Current extends ExecAny, Added extends ExecAny, level> = (
   Current extends Executable<infer A, infer B, infer AA, infer BB, infer CAsync>
   ? (Added extends Executable<infer C, infer D, infer CC, infer DD, infer AAsync>
       ? (
-          [AA, BB, CC, DD] extends [true, true, true, true] ? (C extends B ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: B; error: 'Invalid Output => Input' })
+          [AA, BB, CC, DD] extends [true, true, true, true] ? (Compat<B, C> extends true ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: B; })
         : [AA, BB, CC, DD] extends [true, true, false, true] ? Executable<A, D, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, true, true, false] ? (C extends B ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: B; error: 'Invalid Output => Input' })
+        : [AA, BB, CC, DD] extends [true, true, true, false] ? (Compat<B, C> extends true ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: B; })
         : [AA, BB, CC, DD] extends [true, true, false, false] ? Executable<A, B, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, true, true, true] ? (C extends B ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: B; error: 'Invalid Output => Input' })
+        : [AA, BB, CC, DD] extends [false, true, true, true] ? (Compat<B, C> extends true ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: B; })
         : [AA, BB, CC, DD] extends [false, true, false, true] ? Executable<void, D, false, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, true, true, false] ? (C extends B ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: B; error: 'Invalid Output => Input' })
+        : [AA, BB, CC, DD] extends [false, true, true, false] ? (Compat<B, C> extends true ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: B; })
         : [AA, BB, CC, DD] extends [false, true, false, false] ? Executable<void, B, false, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, false, true, true] ? (C extends A ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: A; error: 'Invalid Output => Input' })
+        : [AA, BB, CC, DD] extends [true, false, true, true] ? (Compat<A, C> extends true ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: A; })
         : [AA, BB, CC, DD] extends [true, false, false, true] ? Executable<A, D, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, false, true, false] ? (C extends A ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { argument: level; Input: C; Output: A; error: 'Invalid Output => Input' })
+        : [AA, BB, CC, DD] extends [true, false, true, false] ? (Compat<A, C> extends true ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { error: 'Invalid Output => Input', argument: level; Input: C; Output: A; })
         : [AA, BB, CC, DD] extends [true, false, false, false] ? Executable<A, void, true, false, Or<CAsync, AAsync>>
         : [AA, BB, CC, DD] extends [false, false, true, true] ? Executable<C, D, true, true, Or<CAsync, AAsync>>
         : [AA, BB, CC, DD] extends [false, false, false, true] ? Executable<void, D, false, true, Or<CAsync, AAsync>>
@@ -199,6 +202,14 @@ export function parallel(..._operators: Array<any>): any {
   return {} as any;
 }
 
+export function action<Input, OutputExec extends Executable<void, any, false, boolean, boolean>>(
+  _act: (ctx: Context<Input>) => OutputExec
+): Executable<Input, OutputExec['output'], [Input] extends [void] ? false : true, true, OutputExec['async']> {
+  return {} as any;
+}
+
+export const noop: Executable<any, any, false, false, false> = {} as any;
+
 // prettier-ignore
 export function execute<Input, Output, Async>(executable: Executable<Input, Output, false, false, Async>): Async extends true ? Promise<void> : void;
 // prettier-ignore
@@ -215,15 +226,10 @@ export function execute<Input, Output>(
   return {} as any;
 }
 
-// prettier-ignore
-export function withValue<Input, Output, Async>(executable: Executable<Input, Output, true, false, Async>, input: Input): Executable<Input, Output, false, false, Async>;
-// prettier-ignore
-export function withValue<Input, Output, Async>(executable: Executable<Input, Output, true, true, Async>, input: Input): Executable<Input, Output, false, true, Async>;
-
-export function withValue<Input, Output, Async extends boolean>(
-  executable: Executable<Input, Output, true, boolean, Async>,
-  input: Input
-): Executable<Input, Output, false, boolean, Async> {
+export function withValue<E extends Executable<any, any, true, boolean, boolean>>(
+  executable: E,
+  input: E['input']
+): Executable<void, E['output'], false, true, E['async']> {
   return pipe(
     inject(input),
     executable
