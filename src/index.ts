@@ -1,5 +1,4 @@
 import { map, mutate, pipe, withValue, inject, execute, parallel, callable } from './lib';
-import { number } from 'prop-types';
 
 type State = {
   num: number;

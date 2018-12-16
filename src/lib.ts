@@ -204,9 +204,9 @@ export function execute<Input, Output, Async>(executable: Executable<Input, Outp
 // prettier-ignore
 export function execute<Input, Output, Async>(executable: Executable<Input, Output, false, true, Async>): Async extends true ? Promise<Output> : Output;
 // prettier-ignore
-export function execute<Input, Output, Async>(executable: Executable<Input, Output, true, false, Async>, input: Input): Async extends true ? Promise<Input> : Input;
+export function execute<E extends Executable<any, any, true, false, boolean>>(executable: E, input: E['input']): E['async'] extends true ? Promise<E['input']> : E['input'];
 // prettier-ignore
-export function execute<Input, Output, Async>(executable: Executable<Input, Output, true, true, Async>, input: Input): Async extends true ? Promise<Output> : Output;
+export function execute<E extends Executable<any, any, true, true, boolean>>(executable: E, input: E['input']): E['async'] extends true ? Promise<E['output']> : E['output'];
 
 export function execute<Input, Output>(
   _executable: Executable<Input, Output, boolean, boolean, boolean>,
