@@ -1,17 +1,4 @@
-import {
-  Context,
-  map,
-  mutate,
-  pipe,
-  withValue,
-  inject,
-  execute,
-  parallel,
-  callable,
-  action,
-  noop,
-  Executable,
-} from './lib';
+import { map, mutate, pipe, withValue, inject, execute, parallel, callable, action, Executable } from './lib';
 
 type State = {
   num: number;
