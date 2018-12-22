@@ -1,58 +1,102 @@
 export type Context<Value> = { value: Value };
 
-export type Executable<Input, Output, In, Out, Async> = {
+type EAsync = 'sync' | 'async';
+type EType = '>->' | '>--' | '---' | '-->';
+
+type InferAsync<Output> = [Output] extends [Promise<any>] ? 'async' : 'sync';
+
+// prettier-ignore
+type WithValue<T extends EType> = (
+  T extends '>->' ? '>->' :
+  T extends '>--' ? '>--' :
+  T extends '-->' ? '>->' :
+  T extends '---' ? '>--'
+  : never
+);
+
+// prettier-ignore
+type WithoutValue<T extends EType> = (
+  T extends '>->' ? '-->' :
+  T extends '>--' ? '---' :
+  T extends '-->' ? '-->' :
+  T extends '---' ? '---' :
+  never
+);
+
+// prettier-ignore
+type HasValue<T extends EType> = (
+  T extends '>->' ? true :
+  T extends '>--' ? true :
+  T extends '-->' ? false :
+  T extends '---' ? false :
+  never
+);
+
+// prettier-ignore
+type ExecOutput<E extends ExecAny> = (
+  E['type'] extends '>->' ? E['output'] :
+  E['type'] extends '>--' ? E['input'] :
+  E['type'] extends '-->' ? E['output'] :
+  E['type'] extends '---' ? void :
+  never
+);
+
+// prettier-ignore
+type WithoutOutput<T extends EType> = (
+  T extends '>->' ? '>--' :
+  T extends '>--' ? '>--' :
+  T extends '-->' ? '---' :
+  T extends '---' ? '---' :
+  never
+);
+
+export type Executable<Input, Output, Type extends EType, Async extends EAsync> = {
   input: Input;
   output: Output;
-  requireInput: In;
-  transformInput: Out;
+  type: Type;
   async: Async;
 };
 
-type ExecAny = Executable<any, any, boolean, boolean, boolean>;
+type ExecAny = Executable<any, any, EType, EAsync>;
 
 export function map<Input, Output>(
   _mapper: (ctx: Context<Input>) => Output
 ): Executable<
   Input,
   [Output] extends [Promise<infer U>] ? U : Output,
-  [Input] extends [void] ? false : true,
-  true,
-  [Output] extends [Promise<any>] ? true : false
+  [Input] extends [void] ? '-->' : '>->',
+  InferAsync<Output>
 > {
   return {} as any;
 }
 
 export function mutate<Input = void>(
   _act: (ctx: Context<Input>) => void
-): Executable<Input, Input, [Input] extends [void] ? false : true, false, false> {
+): Executable<Input, void, [Input] extends [void] ? '---' : '>--', 'sync'> {
   return {} as any;
 }
 
 export function run<Input = void>(
   _act: (ctx: Context<Input>) => void
-): Executable<Input, Input, [Input] extends [void] ? false : true, false, false> {
+): Executable<Input, Input, [Input] extends [void] ? '---' : '>--', 'sync'> {
   return {} as any;
 }
 
 export function ignoreOutput<E extends ExecAny>(
   _exec: E
-): Executable<E['input'], E['input'], E['requireInput'], false, E['async']> {
+): Executable<E['input'], E['input'], WithoutOutput<E['type']>, E['async']> {
   return {} as any;
 }
 
 export function inject<Value>(
   _val: Value
-): Executable<
-  void,
-  [Value] extends [Promise<infer U>] ? U : Value,
-  false,
-  true,
-  [Value] extends [Promise<any>] ? true : false
-> {
+): Executable<void, [Value] extends [Promise<infer U>] ? U : Value, '-->', InferAsync<Value>> {
   return {} as any;
 }
 
-type Or<A, B> = A extends true ? true : (B extends true ? true : false);
+type AsyncOr<A, B> = [A, B] extends ['sync', 'sync'] ? 'sync' : 'async';
+
+type Or<A, B> = [A, B] extends [false, false] ? false : true;
 
 // can pass A when require B
 type Compat<A, B> = A extends B ? true : false;
@@ -61,25 +105,25 @@ type IncompatError = 'Received type is not compatible with Required type';
 
 // prettier-ignore
 type PipeMerge<Current extends ExecAny, Added extends ExecAny, level> = (
-  Current extends Executable<infer A, infer B, infer AA, infer BB, infer CAsync>
-  ? (Added extends Executable<infer C, infer D, infer CC, infer DD, infer AAsync>
+  Current extends Executable<infer A, infer B, infer T1, infer CAsync>
+  ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
       ? (
-          [AA, BB, CC, DD] extends [true, true, true, true] ? (Compat<B, C> extends true ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [AA, BB, CC, DD] extends [true, true, false, true] ? Executable<A, D, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, true, true, false] ? (Compat<B, C> extends true ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [AA, BB, CC, DD] extends [true, true, false, false] ? Executable<A, B, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, true, true, true] ? (Compat<B, C> extends true ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [AA, BB, CC, DD] extends [false, true, false, true] ? Executable<void, D, false, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, true, true, false] ? (Compat<B, C> extends true ? Executable<void, C, false, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [AA, BB, CC, DD] extends [false, true, false, false] ? Executable<void, B, false, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, false, true, true] ? (Compat<A, C> extends true ? Executable<A, D, true, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
-        : [AA, BB, CC, DD] extends [true, false, false, true] ? Executable<A, D, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [true, false, true, false] ? (Compat<A, C> extends true ? Executable<A, C, true, true, Or<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
-        : [AA, BB, CC, DD] extends [true, false, false, false] ? Executable<A, void, true, false, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, false, true, true] ? Executable<C, D, true, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, false, false, true] ? Executable<void, D, false, true, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, false, true, false] ? Executable<C, void, true, false, Or<CAsync, AAsync>>
-        : [AA, BB, CC, DD] extends [false, false, false, false] ? Executable<void, void, false, false, Or<CAsync, AAsync>>
+          [T1, T2] extends ['>->', '>->'] ? (Compat<B, C> extends true ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['>->', '-->'] ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>->', '>--'] ? (Compat<B, C> extends true ? Executable<A, C, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['>->', '-->'] ? Executable<A, B, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>->'] ? (Compat<B, C> extends true ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['-->', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>--'] ? (Compat<B, C> extends true ? Executable<void, C, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['-->', '-->'] ? Executable<void, B, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>--', '>->'] ? (Compat<A, C> extends true ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
+        : [T1, T2] extends ['>--', '-->'] ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>--', '>--'] ? (Compat<A, C> extends true ? Executable<A, C, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
+        : [T1, T2] extends ['>--', '-->'] ? Executable<A, void, '>--', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>->'] ? Executable<C, D, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>--'] ? Executable<C, void, '>--', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '-->'] ? Executable<void, void, '-->', AsyncOr<CAsync, AAsync>>
         : never
       )
       : never)
@@ -123,15 +167,18 @@ export function pipe(..._operators: Array<any>): any {
   return {} as any;
 }
 
-type ParallelExecutable<Input, Output extends Array<any>, In, Out, Async> = Executable<
+type ParallelExecutable<Input, Output extends Array<any>, T extends EType, Async extends EAsync> = Executable<
   Input,
   Output,
-  In,
-  Out,
+  T,
   Async
 > & { parallel: true };
 
-type ParallelInput<AA, A, CC, C> = AA extends true ? (CC extends true ? (A & C) : A) : CC extends true ? C : void;
+type ParallelInput<T1 extends EType, A, T2 extends EType, C> = HasValue<T1> extends true
+  ? (HasValue<T2> extends 'value' ? (A & C) : A)
+  : HasValue<T2> extends 'value'
+  ? C
+  : void;
 
 export type IsFinite<Tuple extends any[], Finite, Infinite> = {
   empty: Finite;
@@ -166,15 +213,19 @@ export type Reverse<Tuple extends any[], Prefix extends any[] = []> = {
 
 type Append<Tuple extends any[], Addend> = Reverse<Prepend<Reverse<Tuple>, Addend>>;
 
+type ParallelMergeTypes<T1 extends EType, T2 extends EType> = Or<HasValue<T1>, HasValue<T2>> extends true
+  ? '>->'
+  : '-->';
+
 // prettier-ignore
 type ParallelMerge<Current extends ExecAny, Added extends ExecAny, _level> = (
-  Current extends ParallelExecutable<infer A, infer B, infer AA, infer _BB, infer CAsync>
-  ? (Added extends Executable<infer C, infer D, infer CC, infer _DD, infer AAsync>
-      ? ParallelExecutable<ParallelInput<AA, A, CC, C>,B extends [...any[]] ? Append<B, D> : never,Or<AA, CC>,true,Or<CAsync, AAsync>>
+  Current extends ParallelExecutable<infer A, infer B, infer T1, infer CAsync>
+  ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
+      ? ParallelExecutable<ParallelInput<T1, A, T2, C>, B extends [...any[]] ? Append<B, D> : never, ParallelMergeTypes<T1, T2>, AsyncOr<CAsync, AAsync>>
       : never)
-  : Current extends Executable<infer A, infer B, infer AA, infer _BB, infer CAsync>
-  ? (Added extends Executable<infer C, infer D, infer CC, infer _DD, infer AAsync>
-      ? ParallelExecutable<ParallelInput<AA, A, CC, C>, [B, D], Or<AA, CC>, true, Or<CAsync, AAsync>>
+  : Current extends Executable<infer A, infer B, infer T1, infer CAsync>
+  ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
+      ? ParallelExecutable<ParallelInput<T1, A, T2, C>, [B, D], ParallelMergeTypes<T1, T2>, AsyncOr<CAsync, AAsync>>
       : never)
   : never
 );
@@ -216,34 +267,49 @@ export function parallel(..._operators: Array<any>): any {
   return {} as any;
 }
 
-export function action<Input, OutputExec extends Executable<void, any, false, boolean, boolean>>(
-  _act: (ctx: Context<Input>) => OutputExec
-): Executable<Input, OutputExec['output'], [Input] extends [void] ? false : true, true, OutputExec['async']> {
+export function action<Input, Output>(
+  _act: (
+    ctx: Context<Input>
+  ) => Executable<
+    void,
+    Output extends Promise<infer U> ? U : Output,
+    [Output] extends [void] ? '---' : '-->',
+    InferAsync<Output>
+  >
+): Executable<Input, Output, [Input] extends [void] ? '-->' : '>->', InferAsync<Output>> {
   return {} as any;
 }
 
-export const noop: Executable<any, any, false, false, false> = {} as any;
-
-// prettier-ignore
-export function execute<Input, Output, Async>(executable: Executable<Input, Output, false, false, Async>): Async extends true ? Promise<void> : void;
-// prettier-ignore
-export function execute<Input, Output, Async>(executable: Executable<Input, Output, false, true, Async>): Async extends true ? Promise<Output> : Output;
-// prettier-ignore
-export function execute<E extends Executable<any, any, true, false, boolean>>(executable: E, input: E['input']): E['async'] extends true ? Promise<E['input']> : E['input'];
-// prettier-ignore
-export function execute<E extends Executable<any, any, true, true, boolean>>(executable: E, input: E['input']): E['async'] extends true ? Promise<E['output']> : E['output'];
-
-export function execute<Input, Output>(
-  _executable: Executable<Input, Output, boolean, boolean, boolean>,
-  _input?: any
-) {
+export function attempt<Exec extends ExecAny>(
+  _action: Exec,
+  _onError: Executable<any, Exec['output'], WithValue<Exec['type']>, Exec['async']>
+): Exec {
   return {} as any;
 }
 
-export function withValue<E extends Executable<any, any, true, boolean, boolean>>(
+export const noop: Executable<any, any, '---', 'sync'> = {} as any;
+
+// prettier-ignore
+export function execute<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '---', Async>): Async extends 'async' ? Promise<void> : void;
+// prettier-ignore
+export function execute<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '-->', Async>): Async extends 'async' ? Promise<Output> : Output;
+// prettier-ignore
+export function execute<E extends Executable<any, any, '>--', EAsync>>(executable: E, input: E['input']): E['async'] extends 'async' ? Promise<E['input']> : E['input'];
+// prettier-ignore
+export function execute<E extends Executable<any, any, '>->', EAsync>>(executable: E, input: E['input']): E['async'] extends 'async' ? Promise<E['output']> : E['output'];
+
+export function execute<Input, Output>(_executable: Executable<Input, Output, EType, EAsync>, _input?: any) {
+  return {} as any;
+}
+
+export function withValue<Value, E extends Executable<any, any, EType, EAsync>>(
   executable: E,
-  input: E['input']
-): Executable<void, E['output'], false, true, E['async']> {
+  input: Value
+): HasValue<E['type']> extends true
+  ? (Compat<Value, E['input']> extends true
+      ? (Executable<void, ExecOutput<E> extends void ? Value : ExecOutput<E>, '-->', E['async']>)
+      : { error: true })
+  : Executable<void, ExecOutput<E> extends void ? Value : ExecOutput<E>, '-->', E['async']> {
   return pipe(
     inject(input),
     executable
@@ -255,17 +321,14 @@ export function validate<E extends ExecAny>(exec: E): E {
 }
 
 // prettier-ignore
-export function callable<Input, Output, Async>(executable: Executable<Input, Output, false, false, Async>): () => (Async extends true ? Promise<void> : void);
+export function callable<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '---', Async>): () => (Async extends 'async' ? Promise<void> : void);
 // prettier-ignore
-export function callable<Input, Output, Async>(executable: Executable<Input, Output, false, true, Async>): () => (Async extends true ? Promise<Output> : Output);
+export function callable<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '-->', Async>): () => (Async extends 'async' ? Promise<Output> : Output);
 // prettier-ignore
-export function callable<Input, Output, Async>(executable: Executable<Input, Output, true, false, Async>): (input: Input) => (Async extends true ? Promise<Input> : Input);
+export function callable<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '>--', Async>): (input: Input) => (Async extends 'async' ? Promise<Input> : Input);
 // prettier-ignore
-export function callable<Input, Output, Async>(executable: Executable<Input, Output, true, true, Async>): (input: Input) => (Async extends true ? Promise<Output> : Output);
+export function callable<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '>->', Async>): (input: Input) => (Async extends 'async' ? Promise<Output> : Output);
 
-export function callable<Input, Output>(
-  _executable: Executable<Input, Output, boolean, boolean, boolean>,
-  _input?: any
-) {
+export function callable<Input, Output>(_executable: Executable<Input, Output, EType, EAsync>, _input?: any) {
   return {} as any;
 }
