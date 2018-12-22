@@ -33,6 +33,14 @@ type HasValue<T extends EType> = (
 );
 
 // prettier-ignore
+type InferType<Input, Output> = (
+  [Input, Output] extends [void, void] ? '---' :
+  [Input, Output] extends [void, any] ? '-->' :
+  [Input, Output] extends [any, void] ? '>--' :
+  '>->'
+);
+
+// prettier-ignore
 type ExecOutput<E extends ExecAny> = (
   E['type'] extends '>->' ? E['output'] :
   E['type'] extends '>--' ? E['input'] :
@@ -78,13 +86,13 @@ export function mutate<Input = void>(
 
 export function run<Input = void>(
   _act: (ctx: Context<Input>) => void
-): Executable<Input, Input, [Input] extends [void] ? '---' : '>--', 'sync'> {
+): Executable<Input, void, [Input] extends [void] ? '---' : '>--', 'sync'> {
   return {} as any;
 }
 
 export function ignoreOutput<E extends ExecAny>(
   _exec: E
-): Executable<E['input'], E['input'], WithoutOutput<E['type']>, E['async']> {
+): Executable<E['input'], void, WithoutOutput<E['type']>, E['async']> {
   return {} as any;
 }
 
@@ -111,19 +119,19 @@ type PipeMerge<Current extends ExecAny, Added extends ExecAny, level> = (
           [T1, T2] extends ['>->', '>->'] ? (Compat<B, C> extends true ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
         : [T1, T2] extends ['>->', '-->'] ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['>->', '>--'] ? (Compat<B, C> extends true ? Executable<A, C, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [T1, T2] extends ['>->', '-->'] ? Executable<A, B, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>->', '---'] ? Executable<A, B, '>->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['-->', '>->'] ? (Compat<B, C> extends true ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
         : [T1, T2] extends ['-->', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['-->', '>--'] ? (Compat<B, C> extends true ? Executable<void, C, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [T1, T2] extends ['-->', '-->'] ? Executable<void, B, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '---'] ? Executable<void, B, '-->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['>--', '>->'] ? (Compat<A, C> extends true ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
         : [T1, T2] extends ['>--', '-->'] ? Executable<A, D, '>->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['>--', '>--'] ? (Compat<A, C> extends true ? Executable<A, C, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
-        : [T1, T2] extends ['>--', '-->'] ? Executable<A, void, '>--', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>->'] ? Executable<C, D, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>--'] ? Executable<C, void, '>--', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '-->'] ? Executable<void, void, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>--', '---'] ? Executable<A, void, '>--', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '>->'] ? Executable<C, D, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '>--'] ? Executable<C, void, '>--', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '---'] ? Executable<void, void, '-->', AsyncOr<CAsync, AAsync>>
         : never
       )
       : never)
@@ -167,18 +175,20 @@ export function pipe(..._operators: Array<any>): any {
   return {} as any;
 }
 
-type ParallelExecutable<Input, Output extends Array<any>, T extends EType, Async extends EAsync> = Executable<
-  Input,
-  Output,
-  T,
-  Async
-> & { parallel: true };
+// prettier-ignore
+type ParallelExecutable<Input, Output extends Array<any>, T extends EType, Async extends EAsync> = (
+  Executable<Input ,Output ,T ,Async> &
+  { parallel: true }
+);
 
-type ParallelInput<T1 extends EType, A, T2 extends EType, C> = HasValue<T1> extends true
-  ? (HasValue<T2> extends 'value' ? (A & C) : A)
-  : HasValue<T2> extends 'value'
-  ? C
-  : void;
+// prettier-ignore
+type ParallelInput<T1 extends EType, I1, T2 extends EType, I2> = (
+  [HasValue<T1>, HasValue<T2>] extends [true, true] ? (I1 & I2) :
+  [HasValue<T1>, HasValue<T2>] extends [true, false] ? I1 :
+  [HasValue<T1>, HasValue<T2>] extends [false, true] ? I2 :
+  [HasValue<T1>, HasValue<T2>] extends [false, false] ? void :
+  never
+);
 
 export type IsFinite<Tuple extends any[], Finite, Infinite> = {
   empty: Finite;
@@ -214,11 +224,21 @@ export type Reverse<Tuple extends any[], Prefix extends any[] = []> = {
 type Append<Tuple extends any[], Addend> = Reverse<Prepend<Reverse<Tuple>, Addend>>;
 
 type ParallelMergeTypes<T1 extends EType, T2 extends EType> = Or<HasValue<T1>, HasValue<T2>> extends true
-  ? '>->'
-  : '-->';
+  ? '-->'
+  : '>->';
 
 // prettier-ignore
 type ParallelMerge<Current extends ExecAny, Added extends ExecAny, _level> = (
+  [Current, Added] extends [ParallelExecutable<infer I1, infer O1, infer T1, infer A1>, Executable<infer I2, infer O2, infer T2, infer A2>] ? (
+    ParallelExecutable<ParallelInput<T1, I1, T2, I2>, O1 extends [...any[]] ? Append<O1, O2> : never, ParallelMergeTypes<T1, T2>, AsyncOr<A1, A2>>
+  ) :
+  [Current, Added] extends [Executable<infer I1, infer O1, infer T1, infer A1>, Executable<infer I2, infer O2, infer T2, infer A2>] ? (
+    ParallelExecutable<ParallelInput<T1, I1, T2, I2>, [O1, O2], ParallelMergeTypes<T1, T2>, AsyncOr<A1, A2>>
+  ) :
+  never
+);
+
+/*
   Current extends ParallelExecutable<infer A, infer B, infer T1, infer CAsync>
   ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
       ? ParallelExecutable<ParallelInput<T1, A, T2, C>, B extends [...any[]] ? Append<B, D> : never, ParallelMergeTypes<T1, T2>, AsyncOr<CAsync, AAsync>>
@@ -229,6 +249,7 @@ type ParallelMerge<Current extends ExecAny, Added extends ExecAny, _level> = (
       : never)
   : never
 );
+*/
 
 /*
   var range = num => Array(num).fill(null).map((v, i) => i + 1);
@@ -276,13 +297,15 @@ export function action<Input, Output>(
     [Output] extends [void] ? '---' : '-->',
     InferAsync<Output>
   >
-): Executable<Input, Output, [Input] extends [void] ? '-->' : '>->', InferAsync<Output>> {
+): Executable<Input, Output, InferType<Input, Output>, InferAsync<Output>> {
   return {} as any;
 }
 
 export function attempt<Exec extends ExecAny>(
   _action: Exec,
-  _onError: Executable<any, Exec['output'], WithValue<Exec['type']>, Exec['async']>
+  _onError: HasValue<Exec['type']> extends true
+    ? Executable<any, Exec['output'], WithValue<Exec['type']>, Exec['async']>
+    : Executable<any, Exec['output'], '>--', Exec['async']>
 ): Exec {
   return {} as any;
 }

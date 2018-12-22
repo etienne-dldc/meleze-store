@@ -1,4 +1,19 @@
-import { map, mutate, pipe, withValue, inject, execute, parallel, callable, action, validate, attempt } from './lib';
+import {
+  map,
+  mutate,
+  pipe,
+  withValue,
+  inject,
+  execute,
+  parallel,
+  callable,
+  action,
+  validate,
+  attempt,
+  run,
+  ignoreOutput,
+  noop,
+} from './lib';
 
 type State = {
   num: number;
@@ -52,25 +67,33 @@ const test = pipe(
   testMap
 );
 
-const attemptStuff = attempt(
-  test,
-  action<Error, { str: string }>(() => {
-    return inject({
-      str: '0',
-    });
-  })
+const onError = action<Error, void>(({ value }) => {
+  console.log(value);
+
+  return {} as any;
+});
+
+const onErrorBis = run<Error>(({ value }) => {
+  console.log(value);
+});
+
+const attemptStuff = attempt(ignoreOutput(test), onErrorBis);
+
+const paraPart = pipe(
+  map<{ num: number }, number>(({ value }) => value.num),
+  double
 );
 
 const runAll = parallel(
   mut1,
-  mut2,
+  // mut2,
   // myAction,
-  pipe(
-    map<{ num: number }, number>(({ value }) => value.num),
-    double
-  )
+  map<void, number>(() => 42),
+  paraPart
 );
 
-const result1 = callable(runAll)({ str: 'hello', num: 43 });
-const result2 = execute(runAll, { str: 'hello', num: 43 });
+const paraPara = parallel(mut1, runAll);
+
+const result1 = callable(paraPara)({ str: 'hello', num: 43 });
+const result2 = execute(paraPara, { str: 'hello', num: 43 });
 const result3 = execute(setStr);
