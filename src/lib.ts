@@ -33,15 +33,6 @@ type HasValue<T extends EType> = (
 );
 
 // prettier-ignore
-// type HasOutput<T extends EType> = (
-//   T extends '>->' ? true :
-//   T extends '>--' ? false :
-//   T extends '-->' ? true :
-//   T extends '---' ? false :
-//   never
-// );
-
-// prettier-ignore
 type InferType<Input, Output> = (
   [Input, Output] extends [void, void] ? '---' :
   [Input, Output] extends [void, any] ? '-->' :
@@ -300,6 +291,10 @@ type BranchCompat<Input, Execs extends BranchObj> = {
   ? true
   : false;
 
+type BranchInput<Execs extends BranchObj> = {
+  [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? void : Execs[K]['input']
+}[keyof Execs];
+
 // prettier-ignore
 export function branch<Input = void>(): (
   <Execs extends BranchObj>(_execs: Execs) => (
@@ -310,6 +305,11 @@ export function branch<Input = void>(): (
 ) {
   return {} as any;
 }
+
+type Test = BranchInput<{
+  a: Executable<void, void, '---', 'sync'>;
+  b: Executable<number, void, '>--', 'sync'>;
+}>;
 
 export function action<Input, Output>(
   _act: (
