@@ -15,6 +15,7 @@ import {
   noop,
   forEach,
   branch,
+  inputType,
 } from './lib';
 import { string } from 'prop-types';
 
@@ -139,3 +140,13 @@ const paraPara = parallel(mut1, runAll);
 const result1 = callable(paraPara)({ str: 'hello', num: 43 });
 const result2 = execute(paraPara, { str: 'hello', num: 43 });
 const result3 = execute(setStr);
+
+const action = pipe(
+  inputType<{ foo: string; bar: string }>(),
+  map<{ foo: string }, { foo: string; baz: string }>(() => ({} as any)),
+  run<{ foo: string; bar: string; baz: string }>(({ value }) => {
+    console.log(value.bar, value.foo, value.baz);
+  })
+);
+
+execute(action, { foo: 'hey', bar: 'yolo' });
