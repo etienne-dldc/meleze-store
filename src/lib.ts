@@ -306,11 +306,6 @@ export function branch<Input = void>(): (
   return {} as any;
 }
 
-type Test = BranchInput<{
-  a: Executable<void, void, '---', 'sync'>;
-  b: Executable<number, void, '>--', 'sync'>;
-}>;
-
 export function action<Input, Output>(
   _act: (
     ctx: Context<Input>
