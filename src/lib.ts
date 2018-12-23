@@ -6,21 +6,21 @@ type EType = '>->' | '>--' | '---' | '-->';
 type InferAsync<Output> = [Output] extends [Promise<any>] ? 'async' : 'sync';
 
 // prettier-ignore
+type BuildType<In extends boolean, Out extends boolean> = (
+    [In, Out] extends [false, false] ? '---' :
+    [In, Out] extends [false, true] ? '-->' :
+    [In, Out] extends [true, false] ? '>--' :
+    [In, Out] extends [true, true] ? '>->' :
+    never
+)
+
+// prettier-ignore
 type WithValue<T extends EType> = (
   T extends '>->' ? '>->' :
   T extends '>--' ? '>--' :
   T extends '-->' ? '>->' :
   T extends '---' ? '>--'
   : never
-);
-
-// prettier-ignore
-type WithoutValue<T extends EType> = (
-  T extends '>->' ? '-->' :
-  T extends '>--' ? '---' :
-  T extends '-->' ? '-->' :
-  T extends '---' ? '---' :
-  never
 );
 
 // prettier-ignore
@@ -31,6 +31,15 @@ type HasValue<T extends EType> = (
   T extends '---' ? false :
   never
 );
+
+// prettier-ignore
+// type HasOutput<T extends EType> = (
+//   T extends '>->' ? true :
+//   T extends '>--' ? false :
+//   T extends '-->' ? true :
+//   T extends '---' ? false :
+//   never
+// );
 
 // prettier-ignore
 type InferType<Input, Output> = (
@@ -239,19 +248,6 @@ type ParallelMerge<Current extends ExecAny, Added extends ExecAny, _level> = (
 );
 
 /*
-  Current extends ParallelExecutable<infer A, infer B, infer T1, infer CAsync>
-  ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
-      ? ParallelExecutable<ParallelInput<T1, A, T2, C>, B extends [...any[]] ? Append<B, D> : never, ParallelMergeTypes<T1, T2>, AsyncOr<CAsync, AAsync>>
-      : never)
-  : Current extends Executable<infer A, infer B, infer T1, infer CAsync>
-  ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
-      ? ParallelExecutable<ParallelInput<T1, A, T2, C>, [B, D], ParallelMergeTypes<T1, T2>, AsyncOr<CAsync, AAsync>>
-      : never)
-  : never
-);
-*/
-
-/*
   var range = num => Array(num).fill(null).map((v, i) => i + 1);
   var types = range(10).map(i => [
     `// prettier-ignore\n`,
@@ -288,6 +284,33 @@ export function parallel(..._operators: Array<any>): any {
   return {} as any;
 }
 
+type BranchObj = {
+  [key: string]: ExecAny;
+};
+
+type BranchOutput<Execs extends BranchObj> = { [K in keyof Execs]: ExecOutput<Execs[K]> };
+
+type BranchAsync<Execs extends BranchObj> = Execs extends { [K in keyof Execs]: Executable<any, any, EType, 'sync'> }
+  ? 'sync'
+  : 'async';
+
+type BranchCompat<Input, Execs extends BranchObj> = {
+  [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']>)
+} extends { [K in keyof Execs]: true }
+  ? true
+  : false;
+
+// prettier-ignore
+export function branch<Input = void>(): (
+  <Execs extends BranchObj>(_execs: Execs) => (
+    BranchCompat<Input, Execs> extends true
+    ? Executable<Input, BranchOutput<Execs>, BuildType<[Input] extends [void] ? false : true, true>, BranchAsync<Execs>>
+    : { error: { [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']> extends false ? { error: IncompatError; required: Execs[K]['input']; received: Input }: true)}; }
+  )
+) {
+  return {} as any;
+}
+
 export function action<Input, Output>(
   _act: (
     ctx: Context<Input>
@@ -307,6 +330,12 @@ export function attempt<Exec extends ExecAny>(
     ? Executable<any, Exec['output'], WithValue<Exec['type']>, Exec['async']>
     : Executable<any, Exec['output'], '>--', Exec['async']>
 ): Exec {
+  return {} as any;
+}
+
+export function forEach<Exec extends ExecAny>(
+  _exec: Exec
+): Executable<Array<Exec['input']>, Array<Exec['output']>, Exec['type'], Exec['async']> {
   return {} as any;
 }
 
