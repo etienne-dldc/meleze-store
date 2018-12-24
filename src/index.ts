@@ -16,8 +16,8 @@ import {
   forEach,
   branch,
   inputType,
+  mergeWith,
 } from './lib';
-import { string } from 'prop-types';
 
 type State = {
   num: number;
@@ -54,10 +54,13 @@ const multi = branch<{ str: string; num: number }>()({
   mut1bis: mut1,
   mut2,
   asyncStuff: map<{ str: string }, Promise<number>>(() => Promise.resolve(42)),
+  noop,
 });
 
 const res = execute(multi, { str: 'he', num: 43 }).then(res => {
-  res.asyncStuff;
+  console.log(res.asyncStuff);
+  console.log(res.noop);
+  console.log(res.mut2);
 });
 
 const setStrIfTrue = action<boolean, { str: string }>(({ value }) => {
@@ -124,8 +127,13 @@ const getLikeSum = map<Array<Post>, number>(({ value: posts }) => {
 const onQuery = pipe(
   map<{ query: string }, string>(({ value }) => value.query),
   getPostIds,
-  forEach(getPost)
+  forEach(getPost),
+  mergeWith(getLikeSum, (posts, sum) => ({ posts, sum }))
 );
+
+execute(onQuery, { query: 'demo' }).then(res => {
+  res.sum;
+});
 
 const runAll = parallel(
   mut1,
@@ -141,7 +149,7 @@ const result1 = callable(paraPara)({ str: 'hello', num: 43 });
 const result2 = execute(paraPara, { str: 'hello', num: 43 });
 const result3 = execute(setStr);
 
-const action = pipe(
+const demoAction = pipe(
   inputType<{ foo: string; bar: string }>(),
   map<{ foo: string }, { foo: string; baz: string }>(() => ({} as any)),
   run<{ foo: string; bar: string; baz: string }>(({ value }) => {
@@ -149,4 +157,4 @@ const action = pipe(
   })
 );
 
-execute(action, { foo: 'hey', bar: 'yolo' });
+execute(demoAction, { foo: 'hey', bar: 'yolo' });

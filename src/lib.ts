@@ -283,34 +283,10 @@ export function parallel(..._operators: Array<any>): any {
   return {} as any;
 }
 
-type BranchObj = {
-  [key: string]: ExecAny;
-};
-
-type BranchOutput<Execs extends BranchObj> = { [K in keyof Execs]: ExecOutput<Execs[K]> };
-
-type BranchAsync<Execs extends BranchObj> = Execs extends { [K in keyof Execs]: Executable<any, any, EType, 'sync'> }
-  ? 'sync'
-  : 'async';
-
-type BranchCompat<Input, Execs extends BranchObj> = {
-  [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']>)
-} extends { [K in keyof Execs]: true }
-  ? true
-  : false;
-
-type BranchInput<Execs extends BranchObj> = {
-  [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? void : Execs[K]['input']
-}[keyof Execs];
-
-// prettier-ignore
-export function branch<Input = void>(): (
-  <Execs extends BranchObj>(_execs: Execs) => (
-    BranchCompat<Input, Execs> extends true
-    ? Executable<Input, BranchOutput<Execs>, BuildType<[Input] extends [void] ? false : true, true>, BranchAsync<Execs>>
-    : { error: { [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']> extends false ? { error: IncompatError; required: Execs[K]['input']; received: Input }: true)}; }
-  )
-) {
+export function mergeWith<Exec extends ExecAny, Output>(
+  _exec: Exec,
+  _merge: (input: HasValue<Exec['type']> extends true ? Exec['input'] : void, output: ExecOutput<Exec>) => Output
+): Executable<Exec['input'], Output, BuildType<HasValue<Exec['type']>, true>, Exec['async']> {
   return {} as any;
 }
 
@@ -385,5 +361,41 @@ export function callable<Input, Output, Async extends EAsync>(executable: Execut
 export function callable<Input, Output, Async extends EAsync>(executable: Executable<Input, Output, '>->', Async>): (input: Input) => (Async extends 'async' ? Promise<Output> : Output);
 
 export function callable<Input, Output>(_executable: Executable<Input, Output, EType, EAsync>, _input?: any) {
+  return {} as any;
+}
+
+type BranchObj = {
+  [key: string]: ExecAny;
+};
+
+// prettier-ignore
+type BranchOutputItem<Input, E extends ExecAny> = (
+  E['type'] extends '>->' ? MergeInOut<Input, E['output']> :
+  E['type'] extends '>--' ? Input :
+  E['type'] extends '-->' ? MergeInOut<Input, E['output']> :
+  E['type'] extends '---' ? Input :
+  never
+);
+
+type BranchOutput<Input, Execs extends BranchObj> = { [K in keyof Execs]: BranchOutputItem<Input, Execs[K]> };
+
+type BranchAsync<Execs extends BranchObj> = Execs extends { [K in keyof Execs]: Executable<any, any, EType, 'sync'> }
+  ? 'sync'
+  : 'async';
+
+type BranchCompat<Input, Execs extends BranchObj> = {
+  [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']>)
+} extends { [K in keyof Execs]: true }
+  ? true
+  : false;
+
+// prettier-ignore
+export function branch<Input = void>(): (
+  <Execs extends BranchObj>(_execs: Execs) => (
+    BranchCompat<Input, Execs> extends true
+    ? Executable<Input, BranchOutput<Input, Execs>, BuildType<[Input] extends [void] ? false : true, true>, BranchAsync<Execs>>
+    : { error: { [K in keyof Execs]: HasValue<Execs[K]['type']> extends false ? true : (Compat<Input, Execs[K]['input']> extends false ? { error: IncompatError; required: Execs[K]['input']; received: Input }: true)}; }
+  )
+) {
   return {} as any;
 }
