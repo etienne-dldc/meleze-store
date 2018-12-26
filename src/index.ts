@@ -8,7 +8,6 @@ import {
   parallel,
   callable,
   action,
-  validate,
   attempt,
   run,
   ignoreOutput,
@@ -35,7 +34,13 @@ const setNum = mutate<number>(({ value }) => {
 
 const double = map<number, number>(({ value }) => value * 2);
 
-const doubleAll = map<Array<number>, Array<number>>(({ value }) => value);
+const doubleAll = map<Array<number>, Array<number>>(({ value }) => value.map(v => v * 2));
+
+const betterDoubleAll = forEach(double);
+
+execute(doubleAll, [1, 4, 8]);
+
+execute(betterDoubleAll, [4, 7, 9]);
 
 const setStr = mutate(() => {
   state.str = 'foo';
@@ -57,7 +62,7 @@ const multi = branch<{ str: string; num: number }>()({
   noop,
 });
 
-const res = execute(multi, { str: 'he', num: 43 }).then(res => {
+execute(multi, { str: 'he', num: 43 }).then(res => {
   console.log(res.asyncStuff);
   console.log(res.noop);
   console.log(res.mut2);
@@ -78,6 +83,14 @@ const myAction = pipe(
   setNum
 );
 
+execute(myAction, true);
+
+const actionNoOut = action<void, void>(() => {
+  return pipe(setStr);
+});
+
+execute(actionNoOut);
+
 const testMap = map<{ num: number }, { str: string }>(({ value }) => ({ str: value.num + '' }));
 
 const test = pipe(
@@ -85,17 +98,23 @@ const test = pipe(
   testMap
 );
 
-const onError = action<Error, void>(({ value }) => {
+const onError = action<Error, { num: number; str: string }>(({ value }) => {
   console.log(value);
 
   return {} as any;
 });
 
+const attemptStuff = attempt(test, onError);
+
+execute(attemptStuff);
+
 const onErrorBis = run<Error>(({ value }) => {
   console.log(value);
 });
 
-const attemptStuff = attempt(ignoreOutput(test), onErrorBis);
+const attemptStuffBis = attempt(ignoreOutput(test), onErrorBis);
+
+execute(attemptStuffBis);
 
 const paraPart = pipe(
   map<{ num: number }, number>(({ value }) => value.num),
@@ -110,8 +129,8 @@ type Post = {
 };
 
 const Api = {
-  getPostIds: (query: string): Promise<Array<string>> => ({} as any),
-  getPost: (postId: string): Promise<Post> => ({} as any),
+  getPostIds: (_query: string): Promise<Array<string>> => ({} as any),
+  getPost: (_postId: string): Promise<Post> => ({} as any),
 };
 
 const getPostIds = map<string, Promise<Array<string>>>(({ value: query }) => {
@@ -145,9 +164,9 @@ const runAll = parallel(
 
 const paraPara = parallel(mut1, runAll);
 
-const result1 = callable(paraPara)({ str: 'hello', num: 43 });
-const result2 = execute(paraPara, { str: 'hello', num: 43 });
-const result3 = execute(setStr);
+callable(paraPara)({ str: 'hello', num: 43 });
+execute(paraPara, { str: 'hello', num: 43 });
+execute(setStr);
 
 const demoAction = pipe(
   inputType<{ foo: string; bar: string }>(),

@@ -124,17 +124,17 @@ type PipeMerge<Current extends ExecAny, Added extends ExecAny, level> = (
   Current extends Executable<infer A, infer B, infer T1, infer CAsync>
   ? (Added extends Executable<infer C, infer D, infer T2, infer AAsync>
       ? (
-          [T1, T2] extends ['>->', '>->'] ? (Compat<B, C> extends true ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+          [T1, T2] extends ['>->', '>->'] ? (Compat<B, C> extends true ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
         : [T1, T2] extends ['>->', '-->'] ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>->', '>--'] ? (Compat<B, C> extends true ? Executable<A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
-        : [T1, T2] extends ['>->', '---'] ? Executable<A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>->'] ? (Compat<B, C> extends true ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['>->', '>--'] ? (Compat<B, C> extends true ? Executable<A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
+        : [T1, T2] extends ['>->', '---'] ? Executable<A, MergeInOut<A, B>, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>->'] ? (Compat<B, C> extends true ? Executable<void, MergeInOut<B, D>, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
         : [T1, T2] extends ['-->', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>--'] ? (Compat<B, C> extends true ? Executable<void, C, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: B })
+        : [T1, T2] extends ['-->', '>--'] ? (Compat<B, C> extends true ? Executable<void, C, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
         : [T1, T2] extends ['-->', '---'] ? Executable<void, B, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>--', '>->'] ? (Compat<A, C> extends true ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
+        : [T1, T2] extends ['>--', '>->'] ? (Compat<A, C> extends true ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: A })
         : [T1, T2] extends ['>--', '-->'] ? Executable<A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>--', '>--'] ? (Compat<A, C> extends true ? Executable<A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, required: C, received: A })
+        : [T1, T2] extends ['>--', '>--'] ? (Compat<A, C> extends true ? Executable<A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: A })
         : [T1, T2] extends ['>--', '---'] ? Executable<A, void, '>--', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['---', '>->'] ? Executable<C, MergeInOut<C, D>, '>->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['---', '-->'] ? Executable<void, D, '-->', AsyncOr<CAsync, AAsync>>
@@ -142,8 +142,8 @@ type PipeMerge<Current extends ExecAny, Added extends ExecAny, level> = (
         : [T1, T2] extends ['---', '---'] ? Executable<void, void, '-->', AsyncOr<CAsync, AAsync>>
         : never
       )
-      : never)
-  : never
+      : never) // { error: 'Invalid added' })
+  : never // { error: 'Invalid current', argument: level }
 );
 
 /*
@@ -305,9 +305,12 @@ export function action<Input, Output>(
 
 export function attempt<Exec extends ExecAny>(
   _action: Exec,
-  _onError: HasValue<Exec['type']> extends true
-    ? Executable<any, Exec['output'], WithValue<Exec['type']>, Exec['async']>
-    : Executable<any, Exec['output'], '>--', Exec['async']>
+  _onError: Executable<
+    any,
+    Exec['output'],
+    BuildType<true, ExecOutput<Exec> extends void ? false : true>,
+    Exec['async']
+  >
 ): Exec {
   return {} as any;
 }
