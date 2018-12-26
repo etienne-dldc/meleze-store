@@ -76,6 +76,18 @@ const setStrIfTrue = action<boolean, { str: string }>(({ value }) => {
   return inject({ str: 'hello' });
 });
 
+const sameAsRun = action<boolean, { str: string }>(({ value }) => {
+  if (value) {
+    return setStrIfTrue;
+  }
+  return pipe(
+    inputType<boolean>(),
+    inject({ str: 'hello' })
+  );
+});
+
+execute(sameAsRun, true);
+
 const myAction = pipe(
   setStrIfTrue,
   setStr,

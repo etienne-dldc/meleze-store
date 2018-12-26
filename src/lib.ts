@@ -281,15 +281,12 @@ export function mergeWith<Exec extends ExecAny, Output>(
   return {} as any;
 }
 
+// prettier-ignore
 export function action<Input, Output>(
-  _act: (
-    ctx: Context<Input>
-  ) => Executable<
-    void,
-    Output extends Promise<infer U> ? U : Output,
-    [Output] extends [void] ? '---' : '-->',
-    InferAsync<Output>
-  >
+  _act: (ctx: Context<Input>) => (
+    | Executable<void, Output extends Promise<infer U> ? U : Output, [Output] extends [void] ? '---' : '-->', InferAsync<Output>>
+    | Executable<Input, Output extends Promise<infer U> ? U : Output, [Output] extends [void] ? '>--' : '>->', InferAsync<Output>>
+  )
 ): Executable<Input, Output, InferType<Input, Output>, InferAsync<Output>> {
   return {} as any;
 }
