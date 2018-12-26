@@ -380,6 +380,7 @@ type BranchCompat<Input, Execs extends BranchObj> = {
   ? true
   : false;
 
+// Use _ wen TS 3.3 is out !
 // prettier-ignore
 export function branch<Input = void>(): (
   <Execs extends BranchObj>(_execs: Execs) => (
