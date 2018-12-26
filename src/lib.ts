@@ -15,15 +15,6 @@ type BuildType<In extends boolean, Out extends boolean> = (
 )
 
 // prettier-ignore
-type WithValue<T extends EType> = (
-  T extends '>->' ? '>->' :
-  T extends '>--' ? '>--' :
-  T extends '-->' ? '>->' :
-  T extends '---' ? '>--'
-  : never
-);
-
-// prettier-ignore
 type HasValue<T extends EType> = (
   T extends '>->' ? true :
   T extends '>--' ? true :
