@@ -93,7 +93,7 @@ type PipeMerge<Ctx, S, Current extends ExecAny<Ctx, S>, Added extends ExecAny<Ct
         : [T1, T2] extends ['---', '>->'] ? Executable<Ctx, S, C, MergeInOut<C, D>, '>->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['---', '-->'] ? Executable<Ctx, S, void, D, '-->', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['---', '>--'] ? Executable<Ctx, S, C, void, '>--', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['---', '---'] ? Executable<Ctx, S, void, void, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '---'] ? Executable<Ctx, S, void, void, '---', AsyncOr<CAsync, AAsync>>
         : never
       )
       : never) // { error: 'Invalid added' })
