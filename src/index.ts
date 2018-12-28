@@ -1,4 +1,22 @@
-import {
+import { createOperators } from './lib';
+'./lib';
+
+type State = {
+  num: number;
+  str: string;
+  obj: {
+    foo: string;
+  };
+};
+
+type Ctx = {
+  api: {
+    getPostIds: (_query: string) => Promise<Array<string>>;
+    getPost: (_postId: string) => Promise<Post>;
+  };
+};
+
+const {
   map,
   mutate,
   pipe,
@@ -16,19 +34,9 @@ import {
   branch,
   inputType,
   mergeWith,
-} from './lib';
+} = createOperators<Ctx, State>();
 
-type State = {
-  num: number;
-  str: string;
-  obj: {
-    foo: string;
-  };
-};
-
-const state: State = {} as any;
-
-const setNum = mutate<number>(({ value }) => {
+const setNum = mutate<number>(({ value, state }) => {
   state.num = value;
 });
 
@@ -42,15 +50,15 @@ execute(doubleAll, [1, 4, 8]);
 
 execute(betterDoubleAll, [4, 7, 9]);
 
-const setStr = mutate(() => {
+const setStr = mutate(({ state }) => {
   state.str = 'foo';
 });
 
-const mut1 = mutate<{ str: string }>(() => {
+const mut1 = mutate<{ str: string }>(({ state }) => {
   state.str = 'foo';
 });
 
-const mut2 = mutate<{ num: number }>(() => {
+const mut2 = mutate<{ num: number }>(({ state }) => {
   state.str = 'foo';
 });
 
@@ -80,10 +88,11 @@ const sameAsRun = action<boolean, { str: string }>(({ value }) => {
   if (value) {
     return setStrIfTrue;
   }
-  return pipe(
+  const res = pipe(
     inputType<boolean>(),
     inject({ str: 'hello' })
   );
+  return res;
 });
 
 execute(sameAsRun, true);
@@ -140,16 +149,11 @@ type Post = {
   likes: number;
 };
 
-const Api = {
-  getPostIds: (_query: string): Promise<Array<string>> => ({} as any),
-  getPost: (_postId: string): Promise<Post> => ({} as any),
-};
-
-const getPostIds = map<string, Promise<Array<string>>>(({ value: query }) => {
-  return Api.getPostIds(query);
+const getPostIds = map<string, Promise<string[]>>(({ value: query, api }) => {
+  return api.getPostIds(query);
 });
 
-const getPost = map<string, Promise<Post>>(({ value: postId }) => Api.getPost(postId));
+const getPost = map<string, Promise<Post>>(({ value: postId, api }) => api.getPost(postId));
 
 const getLikeSum = map<Array<Post>, number>(({ value: posts }) => {
   return posts.reduce((acc, post) => acc + post.likes, 0);
