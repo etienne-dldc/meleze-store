@@ -1,4 +1,4 @@
-import { createOperators } from '../lib';
+import { createOperators } from '../lib/actions/operators';
 import * as effects from './effects';
 import state from './state';
 

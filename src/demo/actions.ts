@@ -1,20 +1,5 @@
-import { createOperators } from './lib';
-'./lib';
-
-type State = {
-  num: number;
-  str: string;
-  obj: {
-    foo: string;
-  };
-};
-
-type Ctx = {
-  api: {
-    getPostIds: (_query: string) => Promise<Array<string>>;
-    getPost: (_postId: string) => Promise<Post>;
-  };
-};
+import { State, Ctx, Post } from './state';
+import { createOperators } from '../lib';
 
 const {
   map,
@@ -34,6 +19,7 @@ const {
   branch,
   inputType,
   mergeWith,
+  filter,
 } = createOperators<Ctx, State>();
 
 const setNum = mutate<number>(({ value, state }) => {
@@ -142,13 +128,6 @@ const paraPart = pipe(
   double
 );
 
-type Post = {
-  id: string;
-  title: string;
-  content: string;
-  likes: number;
-};
-
 const getPostIds = map<string, Promise<string[]>>(({ value: query, api }) => {
   return api.getPostIds(query);
 });
@@ -193,3 +172,34 @@ const demoAction = pipe(
 );
 
 execute(demoAction, { foo: 'hey', bar: 'yolo' });
+
+const doSomeStateChange = mutate<void>(({ state }) => {
+  state.str = 'bar';
+});
+
+const setInput = pipe(
+  doSomeStateChange,
+  mutate<string>(({ value: input, state }) => {
+    state.str = input;
+  })
+);
+
+execute(setInput, 'hello');
+
+type User = {
+  isAwesome: boolean;
+  name: string;
+};
+
+export const filterAwesomeUser = filter<{ isAwesome: boolean }>(({ value: somethingAwesome }) => {
+  return somethingAwesome.isAwesome;
+});
+
+export const clickedUser = pipe(
+  inputType<User>(),
+  filterAwesomeUser,
+  action<User, void>(({ value: user }) => {
+    console.log(user);
+    return noop;
+  })
+);

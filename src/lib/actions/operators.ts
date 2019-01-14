@@ -1,3 +1,5 @@
+import { Omit, MergeInOut } from '../utils';
+
 export type Context<UserContext, State, Value> = Omit<UserContext, 'state' | 'value'> & { value: Value; state: State };
 
 type EAsync = 'sync' | 'async';
@@ -68,10 +70,6 @@ type Or<A, B> = [A, B] extends [false, false] ? false : true;
 type Compat<A, B> = A extends B ? true : false;
 
 type IncompatError = 'Received type is not compatible with Required type';
-
-type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
-
-type MergeInOut<In, Out> = [In, Out] extends [object, object] ? Omit<In, keyof Out> & Out : Out;
 
 // prettier-ignore
 type PipeMerge<Ctx, S, Current extends ExecAny<Ctx, S>, Added extends ExecAny<Ctx, S>, level> = (
@@ -321,6 +319,10 @@ export type Operators<C, S> = {
   forEach<Exec extends ExecAny<C, S>>(
     _exec: Exec
   ): Executable<C, S, Array<Exec['input']>, Array<Exec['output']>, Exec['type'], Exec['async']>;
+
+  filter<Input>(
+    _filter: (ctx: Context<C, S, Input>) => boolean
+  ): Executable<C, S, Input, Input | void, [Input] extends [void] ? '---' : '>--', 'sync'>;
 
   noop: Executable<C, S, any, any, '---', 'sync'>;
 

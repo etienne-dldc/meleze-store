@@ -1,5 +1,4 @@
 import { pipe } from './operators';
-import { StateImage } from './state';
 import * as mutations from './mutations';
 import * as operations from './operations';
 

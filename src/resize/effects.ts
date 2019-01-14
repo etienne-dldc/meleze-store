@@ -28,7 +28,7 @@ const extensions: { [K in OutputMimeType]: string } = {
 function getImageDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = event => {
+    reader.onload = () => {
       resolve(reader.result as string);
     };
     reader.onabort = () => {
@@ -47,7 +47,7 @@ function removeExtensions(name: string): string {
 }
 
 function getImageInfo(file: FileWithContent): Promise<FileWithInfo> {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const img = new Image();
     img.src = file.dataURL;
     img.onload = () => {
