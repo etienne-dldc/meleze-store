@@ -1,21 +1,9 @@
 import isPlainObj from 'is-plain-obj';
-import { PathTree } from './PathTree';
-import { InputRef, ProxyType, FragmentAny, Path } from './types';
+import { PathTree } from './fragments/PathTree';
+import { ProxyType, FragmentAny, Path, Unwraped, UnwrapedPath } from './types';
 import { notNill } from './utils';
-import { TrackingLayer } from './TrackingLayer';
+import { TrackingLayer } from './fragments/TrackingLayer';
 import { IS_PROXY, PATH, ROOT, VALUE, INPUT } from './const';
-
-export type UnwrapedPath = {
-  type: ProxyType;
-  path: Path;
-  input: InputRef;
-};
-
-export type Unwraped = {
-  paths: Array<UnwrapedPath>;
-  value: any;
-  shape: any;
-};
 
 const ARRAY_MUTATION_METHODS_NAMES = new Set([
   'push',
@@ -28,46 +16,26 @@ const ARRAY_MUTATION_METHODS_NAMES = new Set([
   'copyWithin',
 ]);
 
-export class TrackingProxyfier {
-  private layers: Array<TrackingLayer> = [];
+export function createProxyfier() {
+  const layers: Array<TrackingLayer> = [];
 
-  private getLayer(): TrackingLayer {
-    if (this.layers.length === 0) {
+  function getLayer(): TrackingLayer {
+    if (layers.length === 0) {
       throw new Error('No layers ?');
     }
-    return this.layers[this.layers.length - 1];
+    return layers[layers.length - 1];
   }
 
-  getLayerPath(): Array<{ fragment: FragmentAny; input: any }> {
-    return this.layers.map(layer => ({ fragment: layer.fragment, input: layer.input }));
-  }
-
-  getLastLayer(): TrackingLayer | null {
-    return this.layers[this.layers.length - 1] || null;
-  }
-
-  pushLayer(name: string, fragment: FragmentAny, input: any) {
-    this.layers.push(TrackingLayer.create(name, fragment, input));
-  }
-
-  popLayer(): TrackingLayer {
-    return notNill(this.layers.pop());
-  }
-
-  getLayersCount(): number {
-    return this.layers.length;
-  }
-
-  private getPathTree(type: ProxyType, input: any): PathTree<boolean> {
-    const layer = this.getLayer();
+  function getPathTree(type: ProxyType, input: any): PathTree<boolean> {
+    const layer = getLayer();
     return TrackingLayer.getPathTree(layer, type, input);
   }
 
-  private addPath(type: ProxyType, input: any, path: Path) {
-    PathTree.addPath(this.getPathTree(type, input), path, true);
+  function addPath(type: ProxyType, input: any, path: Path) {
+    PathTree.addPath(getPathTree(type, input), path, true);
   }
 
-  private createArrayProxy<T extends Array<any>>(value: T, type: ProxyType, input: any, path: Path): T {
+  function createArrayProxy<T extends Array<any>>(value: T, type: ProxyType, input: any, path: Path): T {
     const handlers: ProxyHandler<T> = {
       get: (target, prop) => {
         if (prop === IS_PROXY) return true;
@@ -77,7 +45,7 @@ export class TrackingProxyfier {
         if (prop === INPUT) return input;
 
         if (prop === 'length') {
-          this.addPath(type, input, path);
+          addPath(type, input, path);
           return target.length;
         }
 
@@ -91,16 +59,16 @@ export class TrackingProxyfier {
           }
           if (prop === 'find') {
             return (finder: any) => {
-              this.addPath(type, input, path);
-              const mapped = target.map((v, i) => this.proxify(v, type, input, [...path, i]));
+              addPath(type, input, path);
+              const mapped = target.map((v, i) => proxify(v, type, input, [...path, i]));
               return mapped.find(finder);
             };
           }
           if (prop === 'map') {
             return (mapper: any) => {
-              this.addPath(type, input, path);
+              addPath(type, input, path);
               return target.map((val, i, arr) => {
-                return mapper(this.proxify(val, type, input, [...path, i]), i, this.proxify(arr, type, input, path));
+                return mapper(proxify(val, type, input, [...path, i]), i, proxify(arr, type, input, path));
               });
             };
           }
@@ -109,9 +77,9 @@ export class TrackingProxyfier {
 
         const nestedPath = [...path, prop];
 
-        return this.proxify((target as any)[prop], type, input, nestedPath);
+        return proxify((target as any)[prop], type, input, nestedPath);
       },
-      set: (target, prop, value) => {
+      set: (_target, _prop, _value) => {
         throw new Error(`Not allowed`);
       },
     };
@@ -119,7 +87,7 @@ export class TrackingProxyfier {
     return new Proxy(value, handlers);
   }
 
-  private createObjectProxy<T extends object>(value: T, type: ProxyType, input: any, path: Path): T {
+  function createObjectProxy<T extends object>(value: T, type: ProxyType, input: any, path: Path): T {
     const handlers: ProxyHandler<T> = {
       get: (target, prop) => {
         if (prop === IS_PROXY) return true;
@@ -149,16 +117,16 @@ export class TrackingProxyfier {
           throw new Error(`function are not supportted`);
         }
 
-        return this.proxify(targetValue, type, input, nestedPath);
+        return proxify(targetValue, type, input, nestedPath);
       },
-      set: (target, prop, value) => {
+      set: (_target, _prop, _value) => {
         throw new Error(`Not allowed`);
       },
-      deleteProperty: (target, prop) => {
+      deleteProperty: (_target, _prop) => {
         throw new Error(`Not allowed`);
       },
       ownKeys: target => {
-        this.addPath(type, input, path);
+        addPath(type, input, path);
         return Reflect.ownKeys(target);
       },
     };
@@ -166,36 +134,56 @@ export class TrackingProxyfier {
     return new Proxy(value, handlers);
   }
 
-  proxify<T extends any>(value: T, type: ProxyType, input: any, path: Path = []): T {
+  function proxify<T extends any>(value: T, type: ProxyType, input: any, path: Path = []): T {
     if (value) {
       if (value[IS_PROXY]) {
         // re-proxy to set correct type & path
-        return this.proxify(value[VALUE], type, input, path);
+        return proxify(value[VALUE], type, input, path);
       } else if (isPlainObj(value)) {
-        return this.createObjectProxy(value as any, type, input, path);
+        return createObjectProxy(value as any, type, input, path);
       } else if (Array.isArray(value)) {
-        return this.createArrayProxy(value, type, input, path);
+        return createArrayProxy(value, type, input, path);
       }
     }
-    if (this.layers.length > 0) {
-      this.addPath(type, input, path);
+    if (layers.length > 0) {
+      addPath(type, input, path);
     }
     return value;
   }
 
-  private isProxy(value: any): boolean {
+  function isProxy(value: any): boolean {
     return value && value[IS_PROXY];
   }
 
-  unproxify<V extends any>(value: V): V {
-    if (this.isProxy(value)) {
+  function unproxify<V extends any>(value: V): V {
+    if (isProxy(value)) {
       return value[VALUE];
     }
     return value;
   }
 
-  unwrap(value: any): Unwraped {
-    if (this.isProxy(value)) {
+  function getLayerPath(): Array<{ fragment: FragmentAny; input: any }> {
+    return layers.map(layer => ({ fragment: layer.fragment, input: layer.input }));
+  }
+
+  function getLastLayer(): TrackingLayer | null {
+    return layers[layers.length - 1] || null;
+  }
+
+  function pushLayer(name: string, fragment: FragmentAny, input: any) {
+    layers.push(TrackingLayer.create(name, fragment, input));
+  }
+
+  function popLayer(): TrackingLayer {
+    return notNill(layers.pop());
+  }
+
+  function getLayersCount(): number {
+    return layers.length;
+  }
+
+  function unwrap(value: any): Unwraped {
+    if (isProxy(value)) {
       const shape: UnwrapedPath = {
         path: value[PATH],
         type: value[ROOT],
@@ -213,7 +201,7 @@ export class TrackingProxyfier {
       const resValue: { [key: string]: any } = {};
       const resShape: { [key: string]: any } = {};
       Object.keys(value).forEach(key => {
-        const res = this.unwrap(value[key]);
+        const res = unwrap(value[key]);
         paths.push(...res.paths);
         resValue[key] = res.value;
         resShape[key] = res.shape;
@@ -228,7 +216,7 @@ export class TrackingProxyfier {
       const paths: Array<UnwrapedPath> = [];
       const resShape: Array<any> = [];
       const resValue = value.map(val => {
-        const res = this.unwrap(val);
+        const res = unwrap(val);
         paths.push(...res.paths);
         resShape.push(res.shape);
         return res.value;
@@ -246,4 +234,15 @@ export class TrackingProxyfier {
       shape: value,
     };
   }
+
+  return {
+    getLayerPath,
+    getLastLayer,
+    pushLayer,
+    popLayer,
+    getLayersCount,
+    unwrap,
+    unproxify,
+    proxify,
+  };
 }

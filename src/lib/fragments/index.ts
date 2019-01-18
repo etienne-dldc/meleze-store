@@ -1,1 +1,0 @@
-export { FramentsManager } from './FramentsManager';

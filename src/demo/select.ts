@@ -1,8 +1,8 @@
-import { FramentsManager } from '../lib';
+import { createManager } from '../lib';
 import { State, state as rawState } from './state';
 import { notNill } from './utils';
 
-const manager = new FramentsManager<State>(rawState);
+const manager = createManager<State>(rawState);
 
 const post = manager.fragment('post', (state, postId: string) => {
   return notNill(state.posts.find(p => p.id === postId));

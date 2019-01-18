@@ -1,7 +1,7 @@
-import { FragmentAny, InputRef, ProxyType, Path } from './types';
+import { FragmentAny, InputRef, ProxyType, Path } from '../types';
 import { PathTree } from './PathTree';
-import { notNill } from './utils';
-import { INPUT, STATE } from './const';
+import { notNill } from '../utils';
+import { INPUT, STATE } from '../const';
 
 export type TrackingLayer = {
   name: string;

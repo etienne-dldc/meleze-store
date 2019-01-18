@@ -1,5 +1,5 @@
 import { INPUT, STATE } from './const';
-import { TrackingLayer } from './TrackingLayer';
+import { TrackingLayer } from './fragments/TrackingLayer';
 
 export type FragmentCompute<State, Input, Output> = (state: State, input: Input) => Output;
 
@@ -31,4 +31,16 @@ export type Cache<Data> = Map<FragmentAny, Map<InputRef, Data>>;
 
 export type CacheTree = {
   children: Cache<CacheTree>;
+};
+
+export type UnwrapedPath = {
+  type: ProxyType;
+  path: Path;
+  input: InputRef;
+};
+
+export type Unwraped = {
+  paths: Array<UnwrapedPath>;
+  value: any;
+  shape: any;
 };

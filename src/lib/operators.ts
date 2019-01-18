@@ -1,4 +1,4 @@
-import { Omit, MergeInOut } from '../utils';
+import { Omit, MergeInOut } from './types';
 
 export type Context<UserContext, State, Value> = Omit<UserContext, 'state' | 'value'> & { value: Value; state: State };
 
@@ -51,16 +51,18 @@ type WithoutOutput<T extends EType> = (
   never
 );
 
-export type Executable<C, S, Input, Output, Type extends EType, Async extends EAsync> = {
+export interface Executable<C, S, Input, Output, Type extends EType, Async extends EAsync> {
   input: Input;
   output: Output;
   type: Type;
   async: Async;
   context: C;
   state: S;
-};
+}
 
 type ExecAny<C, S> = Executable<C, S, any, any, EType, EAsync>;
+
+export interface ExecutableAny<C, S> extends Executable<C, S, any, any, EType, EAsync> {}
 
 type AsyncOr<A, B> = [A, B] extends ['sync', 'sync'] ? 'sync' : 'async';
 
@@ -73,24 +75,24 @@ type IncompatError = 'Received type is not compatible with Required type';
 
 // prettier-ignore
 type PipeMerge<Ctx, S, Current extends ExecAny<Ctx, S>, Added extends ExecAny<Ctx, S>, level> = (
-  Current extends Executable<any, any, infer A, infer B, infer T1, infer CAsync>
-  ? (Added extends Executable<any, any, infer C, infer D, infer T2, infer AAsync>
+  Current extends Executable<any, any, infer I1, infer O1, infer T1, infer CAsync>
+  ? (Added extends Executable<any, any, infer I2, infer O2, infer T2, infer AAsync>
       ? (
-          [T1, T2] extends ['>->', '>->'] ? (Compat<B, C> extends true ? Executable<Ctx, S, A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
-        : [T1, T2] extends ['>->', '-->'] ? Executable<Ctx, S, A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>->', '>--'] ? (Compat<B, C> extends true ? Executable<Ctx, S, A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
-        : [T1, T2] extends ['>->', '---'] ? Executable<Ctx, S, A, MergeInOut<A, B>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>->'] ? (Compat<B, C> extends true ? Executable<Ctx, S, void, MergeInOut<B, D>, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
-        : [T1, T2] extends ['-->', '-->'] ? Executable<Ctx, S, void, D, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['-->', '>--'] ? (Compat<B, C> extends true ? Executable<Ctx, S, void, C, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: B })
-        : [T1, T2] extends ['-->', '---'] ? Executable<Ctx, S, void, B, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>--', '>->'] ? (Compat<A, C> extends true ? Executable<Ctx, S, A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: A })
-        : [T1, T2] extends ['>--', '-->'] ? Executable<Ctx, S, A, MergeInOut<A, D>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['>--', '>--'] ? (Compat<A, C> extends true ? Executable<Ctx, S, A, MergeInOut<A, C>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: C, received: A })
-        : [T1, T2] extends ['>--', '---'] ? Executable<Ctx, S, A, void, '>--', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['---', '>->'] ? Executable<Ctx, S, C, MergeInOut<C, D>, '>->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['---', '-->'] ? Executable<Ctx, S, void, D, '-->', AsyncOr<CAsync, AAsync>>
-        : [T1, T2] extends ['---', '>--'] ? Executable<Ctx, S, C, void, '>--', AsyncOr<CAsync, AAsync>>
+          [T1, T2] extends ['>->', '>->'] ? (Compat<O1, I2> extends true ? Executable<Ctx, S, I1, MergeInOut<I1, O2>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: O1 })
+        : [T1, T2] extends ['>->', '-->'] ? Executable<Ctx, S, I1, MergeInOut<I1, O2>, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>->', '>--'] ? (Compat<O1, I2> extends true ? Executable<Ctx, S, I1, MergeInOut<I1, I2>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: O1 })
+        : [T1, T2] extends ['>->', '---'] ? Executable<Ctx, S, I1, MergeInOut<I1, O1>, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>->'] ? (Compat<O1, I2> extends true ? Executable<Ctx, S, void, MergeInOut<O1, O2>, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: O1 })
+        : [T1, T2] extends ['-->', '-->'] ? Executable<Ctx, S, void, O2, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['-->', '>--'] ? (Compat<O1, I2> extends true ? Executable<Ctx, S, void, I2, '-->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: O1 })
+        : [T1, T2] extends ['-->', '---'] ? Executable<Ctx, S, void, O1, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>--', '>->'] ? (Compat<I1, I2> extends true ? Executable<Ctx, S, I1, MergeInOut<I1, O2>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: I1 })
+        : [T1, T2] extends ['>--', '-->'] ? Executable<Ctx, S, I1, MergeInOut<I1, O2>, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['>--', '>--'] ? (Compat<I1, I2> extends true ? Executable<Ctx, S, I1, MergeInOut<I1, I2>, '>->', AsyncOr<CAsync, AAsync>> : { error: IncompatError, argument: level, types: [T1, T2], required: I2, received: I1 })
+        : [T1, T2] extends ['>--', '---'] ? Executable<Ctx, S, I1, void, '>--', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '>->'] ? Executable<Ctx, S, I2, MergeInOut<I2, O2>, '>->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '-->'] ? Executable<Ctx, S, void, O2, '-->', AsyncOr<CAsync, AAsync>>
+        : [T1, T2] extends ['---', '>--'] ? Executable<Ctx, S, I2, void, '>--', AsyncOr<CAsync, AAsync>>
         : [T1, T2] extends ['---', '---'] ? Executable<Ctx, S, void, void, '---', AsyncOr<CAsync, AAsync>>
         : never
       )
@@ -190,9 +192,24 @@ type BranchCompat<C, S, Input, Execs extends BranchObj<C, S>> = {
   ? true
   : false;
 
-export function createOperators<UserContext, State>(): Operators<UserContext, State> {
-  return {} as any;
-}
+export type CallableExecutable<C, S, Exec extends ExecAny<C, S>> = Exec extends Executable<
+  C,
+  S,
+  infer Input,
+  infer Output,
+  infer Type,
+  infer Async
+>
+  ? (Type extends '---'
+      ? (() => Async extends 'async' ? Promise<void> : void)
+      : Type extends '-->'
+      ? (() => Async extends 'async' ? Promise<Output> : Output)
+      : Type extends '>--'
+      ? ((input: Input) => Async extends 'async' ? Promise<Input> : Input)
+      : Type extends '>->'
+      ? ((input: Input) => Async extends 'async' ? Promise<Output> : Output)
+      : never)
+  : never;
 
 export type Operators<C, S> = {
   map<Input, Output>(
