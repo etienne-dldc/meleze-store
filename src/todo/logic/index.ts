@@ -1,7 +1,7 @@
-import { Manager } from '../../lib';
+import { createManager } from '../../lib';
 import { State, initialState } from './state';
 
-export const manager = new Manager<State>(initialState);
+export const manager = createManager<State>(initialState);
 
 export const fragment = manager.fragment;
 
